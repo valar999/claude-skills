@@ -1,4 +1,4 @@
-# ai
+# Claude Skills
 
 Personal collection of [Claude Code](https://docs.claude.com/en/docs/claude-code) skills.
 
