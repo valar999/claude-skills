@@ -87,10 +87,12 @@ Before implementation, check git state:
 - "Clean" means: no staged changes, no unstaged modifications to tracked
   files. Untracked files are ignored — treat them as user's in-progress
   notes that have nothing to do with the task.
-- If the repository is clean and the current branch is `main`, create a new
-  branch. The branch name must not contain `/`. Do not include the Jira
-  task ID (or any tracker ID) in the branch name — name it after what the
-  change does, not what ticket it came from.
+- If the repository is clean and the current branch is `main`, run
+  `git fetch` and fast-forward `main` to the remote tracking branch before
+  branching, so the new branch starts from the latest upstream state. Then
+  create a new branch. The branch name must not contain `/`. Do not include
+  the Jira task ID (or any tracker ID) in the branch name — name it after
+  what the change does, not what ticket it came from.
 - If the repository has staged or unstaged modifications to tracked files,
   or the current branch is not `main`, stop and notify the user instead
   of proceeding.
