@@ -152,6 +152,13 @@ After verification:
 
 After review:
 
+- Before committing, run **all** project-specific verification commands
+  (tests, type checks, linters, formatters, build) documented in the
+  project's `CLAUDE.md`, `README`, contributing guide, or memory notes.
+  All of them must pass. If any command cannot be run, say so explicitly
+  and ask before proceeding. Record the commands and their results in
+  `## Verification` — do not rely on the earlier verification pass alone,
+  since later edits (review fixes) may have invalidated it.
 - Stage and commit the changes. Write a commit message that explains the why,
   not just the what.
 - Push the branch only if I ask. Open a PR only if I ask.
