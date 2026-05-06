@@ -1,6 +1,6 @@
 ---
 name: coding-workflow
-description: Structured 6-phase workflow (Questions → Plan → Implementation → Verification → Review → Commit/PR) for non-trivial coding tasks. Invoke automatically whenever the user's message starts with the literal prefix "Task:" (case-insensitive), and otherwise on explicit `/coding-workflow` request. Maintains a task note in ~/Documents/obsidian/Work/ai-tasks/ that advances through planning → implementing → verifying → reviewing → done.
+description: Structured 6-phase workflow (Questions → Plan → Implementation → Verification → Review → Commit/PR) for non-trivial coding tasks. Invoke automatically whenever the user's message starts with the literal prefix "Task:" (case-insensitive), and otherwise on explicit `/coding-workflow` request. Maintains a task note in ~/src/ai-tasks/ that advances through planning → implementing → verifying → reviewing → done.
 ---
 
 # Coding workflow
@@ -35,7 +35,7 @@ Before planning or editing code:
 
 Before implementation:
 
-- Create or update a task note in `~/Documents/obsidian/Work/ai-tasks/`.
+- Create or update a task note in `~/src/ai-tasks/`.
 - If that directory does not exist, fall back to a private GitHub gist:
   - Create the gist on first write with
     `gh gist create --private --filename <YYYY-MM-DD-short-task-name>.md <file>`.
@@ -169,6 +169,9 @@ After review:
 - Precondition for `status: done`: `## Implementation log`, `## Verification`,
   and `## Review` must each contain at least one substantive entry. If any
   is empty, stop and fill it before committing.
+- Once `status:` is `done`, move the task note to `~/src/ai-tasks/archive/`.
+  Create the directory if it does not exist. Skip this step for
+  gist-backed notes.
 
 ## Task note template
 
