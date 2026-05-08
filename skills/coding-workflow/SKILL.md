@@ -163,7 +163,10 @@ After review:
   not just the what.
 - Push the branch only if I ask. Open a PR only if I ask.
 - PR body format: a simple bullet list of the main changes. No
-  `## Summary` / `## Test plan` sections, no checklists, no footers.
+  `## Test plan` sections, no checklists, no footers. Add a short
+  `## Summary` paragraph only when the PR title alone cannot convey the
+  essential context (e.g. non-obvious motivation, a tricky constraint, or a
+  significant design decision that reviewers need upfront). Omit it otherwise.
 - Update the task note: set `status:` to `done` and record the commit hash
   (and PR link if any) in `## Follow-ups`.
 - Precondition for `status: done`: `## Implementation log`, `## Verification`,
