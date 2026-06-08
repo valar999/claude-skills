@@ -136,7 +136,7 @@ After implementation:
 
 After verification:
 
-- Run the `/review` skill on the pending changes. Fall back to a manual
+- Run the `/code-review` skill on the pending changes. Fall back to a manual
   `git diff` review if the skill is unavailable.
 - Look for correctness, edge cases, security issues, maintainability, naming, and unnecessary complexity.
 - Update the task note with:
@@ -145,7 +145,7 @@ After verification:
   - Suggested follow-ups
   - Final status
 - The `## Review` section must be non-empty before moving to step 6.
-  If `/review` found nothing, write "No issues found" plus a one-line
+  If `/code-review` found nothing, write "No issues found" plus a one-line
   summary of what was reviewed (files / scope).
 
 ## 6. Commit and PR
