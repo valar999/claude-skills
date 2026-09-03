@@ -1,105 +1,120 @@
 ---
 name: coding-workflow
-description: Structured 6-phase workflow (Questions → Plan → Implementation → Verification → Review → Commit/PR) for non-trivial coding tasks. Invoke automatically whenever the user's message starts with the literal prefix "Task:" (case-insensitive), and otherwise on explicit `/coding-workflow` request. Maintains a task note in ~/src/ai-tasks/ that advances through planning → implementing → verifying → reviewing → done.
+description: Structured 3-phase workflow (Questions → Plan → Implementation). Invoke only on explicit `/coding-workflow` request. Maintains a task note in ~/src/ai-tasks/.
 ---
 
 # Coding workflow
 
-Use this skill when the user gives you a coding task. Trigger automatically if
-their message begins with `Task:`. Do not skip phases.
+This skill runs only when the user explicitly invokes `/coding-workflow`. Do not skip phases.
 
 ## Required sequence
 
 1. Questions
 2. Plan
 3. Implementation
-4. Verification
-5. Review
-6. Commit and PR
-
-The `status:` field in the task note advances through:
-planning → implementing → verifying → reviewing → done.
-Advance it as you finish each step. Do not skip states.
 
 ## 1. Questions
 
 Before planning or editing code:
 
 - Inspect the relevant files first.
-- Ask only blocking questions.
-- If the task can proceed with reasonable assumptions, list those assumptions
-  and continue.
-- Do not ask questions just to delay progress.
+- Never resolve an open point by inventing the answer. The test for every
+  open point is provenance: can the answer be derived from available data —
+  the request itself, the codebase and its conventions, tests, docs? If
+  yes, derive it and verify it in the files; it is neither a question nor
+  an assumption.
+- If the answer is not derivable, it exists only in the user's head —
+  intent, scope, priorities, tolerance for behavior changes, external
+  constraints. It must reach the user; the only choice is the channel:
+  - the answer shapes the plan (architecture, scope, code outside the
+    task, or hard to change later) — ask before writing the plan;
+  - any reasonable default works and is easy to change later — the
+    point becomes an `## Assumptions` entry, written with its basis
+    when the note is created; the user reviews these at plan approval.
+    An assumption whose basis you cannot state is a question.
+- Get the asked questions answered before writing the plan: a
+  plan-shaping point is settled by the user's answer, never by a
+  guess; a guess is legitimate only as an `## Assumptions` entry on
+  a point where any reasonable default works.
+- No architectural decisions of your own, no additional tasks beyond
+  the request, no "fixes" to parts the task does not touch.
 
 ## 2. Plan
 
 Before implementation:
 
-- Create or update a task note in `~/src/ai-tasks/`.
-- If that directory does not exist, fall back to a private GitHub gist:
-  - Create the gist on first write with
-    `gh gist create --private --filename <YYYY-MM-DD-short-task-name>.md <file>`.
-  - Capture the returned gist ID/URL and reuse it for the rest of the task —
-    record it in the note's frontmatter as `gist:` so a restart can find it.
-  - Subsequent updates use `gh gist edit <id> --filename <name>.md <file>`
-    (write the note to a local temp file first, then push it with `gh gist edit`).
-  - Do not create a new gist per update; always edit the existing one.
+- Create a task note in `~/src/ai-tasks/`.
 - Use this filename format:
 
   `YYYY-MM-DD-short-task-name.md`
 
-- The note must include:
-  - Task summary
-  - Known context
-  - Open questions
-  - Assumptions
-  - Implementation plan
-  - Files likely to change
-  - Verification plan
-  - Risks
-
-- Do not edit production code until the plan exists.
-- For non-trivial changes, stop after writing the plan and ask me to approve it.
-- Skip the task note entirely for trivial changes: under ~10 changed lines,
-  no new logic (typo fixes, comment edits, dependency bumps). Proceed
-  straight to implementation and verification.
+- In the frontmatter, fill `task:` with a short description of what we
+  are doing, optionally followed by the issue id from the tracking
+  system, and `repo:` with the repository the task is in (owner/name,
+  as in the git remote). `branch:` is filled later, at branch setup.
+- `status:` moves through exactly these values: `planning` at note
+  creation, `in-progress` at branch setup, `done` or `superseded` at
+  close.
+- The note has exactly five sections — Summary, Context, Assumptions,
+  Plan, Corrections — as in the template below. Do not add other sections.
+- Write the note at the level of the idea, not the code. Describe what
+  changes in behavior/design, why, and the chosen approach. Do not
+  enumerate files to edit and do not cite line numbers or code snippets;
+  naming a module or component is fine when it is central to the idea.
+  The bar: the user can read the note in a few minutes and understand
+  the full design without opening the code.
+- Do not edit anything in the repository until branch setup. Plan
+  approval is necessary but not sufficient: the reply may first
+  trigger reconciliation and another approval round (below). Silence
+  or a question about the plan is not approval.
+- Stop after writing the plan and ask the user to approve it.
 
 ### After plan approval, before Implementation
 
-The plan note was written with my best guesses. The user's reply almost
-always shifts something — record those shifts in the note **before** the
-first code edit, otherwise the note silently drifts from reality:
+The approval reply may still shift something — an assumption overridden,
+a plan step reshaped, a new constraint. Record those shifts in the note
+**before** branch setup, otherwise the note silently drifts from reality:
 
-- Write the user's answers directly into `## Questions` (next to the
-  question, not in chat memory).
-- Reconcile `## Assumptions` and `## Plan` with those answers — remove
-  or rewrite items the user overrode. If a Plan step disappears, the
-  remaining `- [ ]` list must still be a faithful execution sequence.
-- Set `status: implementing`, fill in `branch:`, and update
-  `**Resume from:**` to point at the first concrete step.
-- Only after the note matches reality: create the branch and start
-  editing code.
+- Reconcile `## Assumptions` and `## Plan` with the reply — remove
+  or rewrite items the user overrode; add items the reply makes
+  necessary: a plan step for a new constraint, an assumption for a
+  new open point (by the same rules as in Questions). If a Plan step
+  disappears, the remaining `- [ ]` list must still be a faithful
+  execution sequence.
+- A reconciled note is a plan version the user has not seen — the
+  approval covered the pre-reconciliation text. Every version must be
+  explicitly approved: if reconciliation changed anything, show the
+  changed items in the conversation and stop for approval of the
+  reconciled version. Repeat reconcile → approve until an approval
+  reply shifts nothing.
+- Only after the note matches reality and its current text is
+  explicitly approved: proceed to branch setup.
+
+## 3. Implementation
 
 ### Branch setup
 
-Before implementation, check git state:
+Check git state first:
 
 - "Clean" means: no staged changes, no unstaged modifications to tracked
   files. Untracked files are ignored — treat them as user's in-progress
   notes that have nothing to do with the task.
-- If the repository is clean and the current branch is `main`, run
-  `git fetch` and fast-forward `main` to the remote tracking branch before
-  branching, so the new branch starts from the latest upstream state. Then
-  create a new branch. The branch name must not contain `/`. Do not include
-  the Jira task ID (or any tracker ID) in the branch name — name it after
-  what the change does, not what ticket it came from.
-- If the repository has staged or unstaged modifications to tracked files,
-  or the current branch is not `main`, stop and notify the user instead
-  of proceeding.
+- If the repository is clean and the current branch is the default
+  branch (`main` or whatever the remote HEAD points to), run
+  `git fetch` and fast-forward it to its remote tracking branch
+  before branching, so the new branch starts from the latest upstream
+  state. Then create a new branch, record its name in the note's
+  `branch:` field, and set `status: in-progress`.
+  The branch name must not contain `/`. Do not include
+  the issue id (from any tracking system) in the branch name — name it
+  after what the change does, not what ticket it came from. The issue id
+  belongs in the note's `task:` field.
+- If the repository is not clean, the current branch is not the
+  default branch, or the fast-forward cannot be completed (diverged
+  history, no remote tracking branch, fetch failure), stop and notify
+  the user instead of proceeding.
 
-## 3. Implementation
-
-During implementation:
+### During implementation
 
 - Follow the approved plan.
 - Keep changes focused.
@@ -110,94 +125,70 @@ During implementation:
   reader. Don't restate WHAT the code does (good names already do that),
   and don't reference the current task, fix, or callers ("added for X",
   "used by Y") — that belongs in the commit/PR, not the source.
-- Update the task note with an implementation log:
-  - What changed
-  - Why it changed
-  - Important decisions
-  - Deviations from the original plan
-- After each completed sub-step, mark the matching `- [ ]` item in `## Plan`
-  as `- [x]` and update the `**Resume from:**` line at the top so a restart
-  knows exactly where to continue.
-
-## 4. Verification
-
-After implementation:
-
-- Run the relevant tests, type checks, linters, or build commands.
-- If a command cannot be run, explain why.
-- If no automated checks exist, describe the manual verification performed.
-- Update the task note with:
-  - Commands run
-  - Results
-  - Failures
-  - Fixes applied
-
-## 5. Review
-
-After verification:
-
-- Run the `/code-review` skill on the pending changes. Fall back to a manual
-  `git diff` review if the skill is unavailable.
-- Look for correctness, edge cases, security issues, maintainability, naming, and unnecessary complexity.
-- Update the task note with:
-  - Review findings
-  - Remaining risks
-  - Suggested follow-ups
-  - Final status
-- The `## Review` section must be non-empty before moving to step 6.
-  If `/code-review` found nothing, write "No issues found" plus a one-line
-  summary of what was reviewed (files / scope).
-
-## 6. Commit and PR
-
-After review:
-
-- Before committing, run **all** project-specific verification commands
-  (tests, type checks, linters, formatters, build) documented in the
-  project's `CLAUDE.md`, `README`, contributing guide, or memory notes.
-  All of them must pass. If any command cannot be run, say so explicitly
-  and ask before proceeding. Record the commands and their results in
-  `## Verification` — do not rely on the earlier verification pass alone,
-  since later edits (review fixes) may have invalidated it.
-- Stage and commit the changes. Write a commit message that explains the why,
-  not just the what.
-- Push the branch only if I ask. Open a PR only if I ask.
-- PR body format: a simple bullet list of the main changes. No
-  `## Test plan` sections, no checklists, no footers. Add a short
-  `## Summary` paragraph only when the PR title alone cannot convey the
-  essential context (e.g. non-obvious motivation, a tricky constraint, or a
-  significant design decision that reviewers need upfront). Omit it otherwise.
-- Update the task note: set `status:` to `done` and record the commit hash
-  (and PR link if any) in `## Follow-ups`.
-- Precondition for `status: done`: `## Implementation log`, `## Verification`,
-  and `## Review` must each contain at least one substantive entry. If any
-  is empty, stop and fill it before committing.
-- Once `status:` is `done`, move the task note to `~/src/ai-tasks/archive/`.
-  Create the directory if it does not exist. Skip this step for
-  gist-backed notes.
+- The `## Plan` and `## Assumptions` text is frozen from branch setup
+  on. Never rewrite, add, or remove their items. The only allowed
+  marks are status marks: `- [x]` on a completed plan step,
+  strike-through on a plan step or assumption superseded by a
+  correction.
+- Record every correction the user gives during implementation in
+  `## Corrections`: one line per correction, capturing its essence, not
+  the full message. If a correction supersedes a plan step or an
+  assumption, strike the superseded item through. `## Corrections` is
+  a log, not a task list: entries never get completion marks. A
+  correction acts in one of three ways: it reshapes how a frozen plan
+  step is executed, voids a step or an assumption (marked by the
+  strike-through), or adds work no step covers. In all three cases
+  completion is gated by the `status: done` rule: every entry
+  reflected in the implementation.
+- If reality forces a deviation from the approved plan — a step turns out
+  wrong, impossible, or insufficient — do not decide alone: stop, lay it
+  out in the conversation, and let the user decide. Record the decision
+  in `## Corrections` like any other correction.
+- If corrections change the direction of the task rather than a detail,
+  so the plan cannot be followed without changing it, stop, set
+  `status: superseded` in the note, and tell the user so explicitly.
+  This is not a plan edit: the note is closed, the task neither
+  continues nor restarts in this agent context, and a superseded note
+  is never an input to later work — not a plan to resume, not a draft
+  to carry over. Whether and how the task restarts is the user's
+  decision, not a workflow step.
+- Run the relevant checks — fmt, linter, build, tests — as you work.
+  If a check cannot be run, explain why and ask the user; do not search
+  for workarounds. The user may run the checks themselves and report
+  the results in the conversation — a check the user confirms passing
+  counts as passed, including for `status: done`. If no automated
+  checks exist, say what was verified manually.
+- Set `status: done` only when every `## Plan` item is `- [x]` or
+  struck through, every `## Corrections` entry is reflected in the
+  implementation, and a final full run of the checks passes. Report
+  the commands and results in the conversation. For each
+  `## Corrections` entry, state in the conversation where the
+  implementation reflects it. When no automated checks exist, the
+  report of what was verified manually replaces the final run.
+- Status marks, `## Corrections` entries, and the closing `status:`
+  change (`done` or `superseded`) are the only note-keeping after
+  branch setup.
+- On `status: superseded`, the branch and the changes made on it stay
+  as they are: deciding what to do with the work is the user's own
+  responsibility, not a workflow step.
 
 ## Task note template
 
 Use this structure for every task note:
 
+```markdown
 ---
-type: ai-task
-status: planning
-created: YYYY-MM-DD
+task:
 repo:
 branch:
-task:
+status: planning
 ---
 
 # Task: <title>
 
-**Resume from:** <one-line pointer to where to pick up after restart>
-
 ## Summary
 
 ## Context
-
-## Questions
 
 ## Assumptions
 
@@ -206,12 +197,5 @@ task:
 - [ ] step 1
 - [ ] step 2
 
-## Files likely to change
-
-## Implementation log
-
-## Verification
-
-## Review
-
-## Follow-ups
+## Corrections
+```
